@@ -1,9 +1,9 @@
 from utils import *
 from datetime import datetime
-
 from SimulationHandler import SimulationHandler
 
 ENERGY_UPDATE_INTERVAL = 2
+SCAN_INTERVAL = 1
 
 
 class AppleBot:
@@ -11,7 +11,7 @@ class AppleBot:
         self.connection = socket_manager
         self.simulation = SimulationHandler()
 
-        self.id = None
+        self.id = -1
         self.name = self.__class__.__name__
         self.planets = []
         self.players = {}
@@ -21,6 +21,7 @@ class AppleBot:
         self.energy = 0
 
         self.last_energy_update = datetime.now()
+        self.last_scan = datetime.now()
 
         self.init()
 
@@ -29,9 +30,6 @@ class AppleBot:
 
     def msg(self, message):
         print(f"[{self.__class__.__name__}]: {message}")
-
-    def set_id(self, cid):
-        self.id = cid
 
     def shoot(self):
         self.angle += 361 / 36.0
@@ -43,7 +41,13 @@ class AppleBot:
         self.last_shot = curve
 
     def update_simulation(self):
-        self.simulation.set_field(self.planets, self.players.values())
+        if self.id == -1:
+            return
+        if not self.planets:
+            return
+        if not self.players:
+            return
+        self.simulation.set_field(self.planets, self.players.values(), self.id)
 
     def process_incoming(self):
         struct_data = self.connection.receive_struct("II")
@@ -56,12 +60,14 @@ class AppleBot:
 
         # bot has joined
         if msg_type == 1:
-            self.set_id(payload)
+            self.id = payload
             self.msg(f"set id to {payload}")
+            self.update_simulation()
 
         # player left
         elif msg_type == 2:
             del self.players[payload]
+            self.update_simulation()
 
         # player joined/reset
         elif msg_type == 3:
@@ -71,6 +77,7 @@ class AppleBot:
             else:
                 self.msg(f"player {payload} moved to ({round(x)},{round(y)})")
             self.players[payload] = Player(x, y, payload)
+            self.update_simulation()
 
         # shot finished msg, deprecated
         elif msg_type == 4:
@@ -80,7 +87,7 @@ class AppleBot:
         # shot begin
         elif msg_type == 5:
             angle, velocity = self.connection.receive_struct("dd")
-            self.msg(f"player {payload} launched a missile with angle {round(angle,3)}° and velocity {velocity}")
+            self.msg(f"player {payload} launched a missile with angle {round(angle, 3)}° and velocity {velocity}")
 
         # shot end (discard shot data)
         elif msg_type == 6:
@@ -114,8 +121,22 @@ class AppleBot:
             self.msg(f"Unexpected message_type: '{msg_type}'\n\t- data: '{payload}'")
 
     def loop(self):
+
         if (datetime.now() - self.last_energy_update).seconds > ENERGY_UPDATE_INTERVAL:
             self.connection.send_str("u")
             self.last_energy_update = datetime.now()
 
+        if (datetime.now() - self.last_scan).seconds > SCAN_INTERVAL:
+            self.scan_field()
+            self.last_scan = datetime.now()
+
         self.process_incoming()
+
+    def scan_field(self):
+        if len(self.players) <= 1:
+            self.msg("Not enough players to scan.")
+            return
+        if not self.simulation.initialized:
+            self.msg("Simulation not yet initialized.")
+            return
+        self.simulation.scan_angle(0, 360, 0.01, 10)

@@ -1,6 +1,6 @@
 import math
 import numpy as np
-
+from tqdm import tqdm
 import utils
 
 
@@ -18,13 +18,22 @@ class SimulationHandler:
         self.maxPlayers = 12
         self.numPlanets = 24
 
-    def set_field(self, planets, players):
+        self.own_id = None
+        self.position = None
+        self.initialized = False
+
+    def set_field(self, planets, players, own_id):
+        self.initialized = True
         self.players = players
         self.planets = planets
+        self.own_id = own_id
 
-    def simulate_shot(self, player_id, pos, energy, angle):
+        for player in players:
+            if player.id == own_id:
+                self.position = player.position
 
-        missile = utils.Missile(pos, energy, angle)
+    def simulate_own_shot(self, angle, energy):
+        missile = utils.Missile(self.position, energy, angle)
         missile_trace = []
         missile_result = utils.MissileResult.RES_UNDETERMINED
         info = 0
@@ -63,7 +72,7 @@ class SimulationHandler:
 
             # check if missile hit a player
             for player in self.players:
-                distance = np.linalg.norm(player.position, missile.position)
+                distance = np.linalg.norm(player.position - missile.position)
 
                 if distance <= self.playerSize and missile.left_source:
                     missile_result = utils.MissileResult.RES_HIT_PLAYER
@@ -71,7 +80,7 @@ class SimulationHandler:
                     sim_running = False
                     break
 
-                if distance > self.playerSize + 1.0 and player.id == player_id:
+                if distance > self.playerSize + 1.0 and player.id == self.own_id:
                     missile.left_source = True
 
             if not sim_running:
@@ -91,3 +100,12 @@ class SimulationHandler:
                 break
 
         return missile_result, info, missile_trace
+
+    def scan_angle(self, angle_start, angle_stop, angle_inc, energy):
+        for angle in tqdm(np.arange(angle_start, angle_stop, angle_inc)):
+            res, info, _ = self.simulate_own_shot(angle, energy)
+            if res == utils.MissileResult.RES_HIT_PLAYER and info != self.own_id:
+                print(f"Can hit other player with angle={angle} and vel={energy}")
+                break
+        else:
+            print("No angle found.")
