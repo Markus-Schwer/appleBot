@@ -4,7 +4,7 @@ import appleBot
 # CONFIG
 IP = "127.0.0.1"
 PORT = 3490
-BOT_VERSION = 8
+BOT_VERSION = 9
 RECV_TIMEOUT = 0.1
 
 if __name__ == "__main__":

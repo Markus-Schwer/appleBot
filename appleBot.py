@@ -72,19 +72,26 @@ class AppleBot:
                 self.msg(f"player {payload} moved to ({round(x)},{round(y)})")
             self.players[payload] = Player(x, y, payload)
 
-        # someone shot
+        # shot finished msg, deprecated
         elif msg_type == 4:
-            n = self.connection.receive_struct("I")[0]
-            curves = []
-            for i in range(n):
-                curve = self.connection.receive_struct("ff")
-                curves.append(curve)
-            if payload == self.id:
-                self.report_shot(curves)
+            self.msg("WARNING! WRONG BOT PROTOCOL VERSION DETECTED (VER < 8)! THIS MSG_TYPE SHOULD NOT BE RECEIVED!")
+            exit(1)
 
-        # game mode (unused)
+        # shot begin
+        elif msg_type == 5:
+            angle, velocity = self.connection.receive_struct("dd")
+            self.msg(f"player {payload} launched a missile with angle {round(angle,3)}° and velocity {velocity}")
+
+        # shot end (discard shot data)
+        elif msg_type == 6:
+            angle, velocity, length = self.connection.receive_struct("ddI")
+            for i in range(length):
+                _ = self.connection.receive_struct("ff")
+
+        # game mode, deprecated
         elif msg_type == 7:
-            _ = self.connection.receive_struct('I')[0]
+            self.msg("WARNING! WRONG BOT PROTOCOL VERSION DETECTED (VER <= 8)! THIS MSG_TYPE SHOULD NOT BE RECEIVED!")
+            exit(1)
 
         # own energy
         elif msg_type == 8:
