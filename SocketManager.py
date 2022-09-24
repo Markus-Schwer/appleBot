@@ -1,22 +1,23 @@
 import socket
 import struct
 import sys
-from time import sleep
 
 
 class SocketManager:
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, version, recv_timeout):
         # set up socket and connect
         self.connected = False
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.ip = ip
         self.port = port
+        self.bot_ver = version
+        self.recv_timeout = recv_timeout
         self.initialize()
 
     def initialize(self):
         self.connect()
         self.discard_all(1)
-        self.send_str("b\n")
+        self.send_str(f"b {self.bot_ver}")
 
     # receives and discards all packages until it times out
     def discard_all(self, discard_timeout=1):
@@ -30,15 +31,24 @@ class SocketManager:
         self.socket.settimeout(timeout)
 
     def receive_bytes(self, byte_count):
+        timeout = self.socket.gettimeout()
+        self.socket.settimeout(self.recv_timeout)
+
         buf = b''
         while byte_count:
-            new_buf = self.socket.recv(byte_count)
-            if not new_buf:
-                print("Connection dropped unexpectedly during RECV.")
-                exit(1)
+            try:
+                new_buf = self.socket.recv(byte_count)
+                if not new_buf:
+                    print("Connection dropped unexpectedly during RECV.")
+                    exit(1)
 
-            buf += new_buf
-            byte_count -= len(new_buf)
+                buf += new_buf
+                byte_count -= len(new_buf)
+            except TimeoutError:
+                buf = None
+                break
+
+        self.socket.settimeout(timeout)
         return buf
 
     def send_str(self, string):
@@ -61,8 +71,7 @@ class SocketManager:
     def receive_struct(self, struct_format):
         byte_struct = self.receive_bytes(struct.calcsize(struct_format))
         if not byte_struct:
-            print("Struct could not be unpacked.")
-            exit(1)
+            return None
         return struct.unpack(struct_format, byte_struct)
 
     def close(self):
