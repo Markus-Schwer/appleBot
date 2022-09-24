@@ -1,6 +1,8 @@
 import math
+
 import numpy as np
 from tqdm import tqdm
+
 import utils
 
 
@@ -33,7 +35,8 @@ class SimulationHandler:
                 self.position = player.position
 
     def simulate_own_shot(self, angle, energy):
-        missile = utils.Missile(self.position, energy, angle)
+        missile = utils.Missile(self.position, angle, energy)
+        print(f"{angle}° {energy}")
         missile_trace = []
         missile_result = utils.MissileResult.RES_UNDETERMINED
         info = 0
@@ -101,11 +104,13 @@ class SimulationHandler:
 
         return missile_result, info, missile_trace
 
-    def scan_angle(self, angle_start, angle_stop, angle_inc, energy):
-        for angle in tqdm(np.arange(angle_start, angle_stop, angle_inc)):
-            res, info, _ = self.simulate_own_shot(angle, energy)
+    def scan_angle(self, angle_data, energy_data):
+        for angle in np.arange(*angle_data): #, desc='angle', colour='red', leave=False):
+            res, info, trace = self.simulate_own_shot(angle, energy_data[0])
             if res == utils.MissileResult.RES_HIT_PLAYER and info != self.own_id:
-                print(f"Can hit other player with angle={angle} and vel={energy}")
+                print(f"=====> Can hit other player with angle={angle} and vel={energy_data[0]}")
                 break
+            else:
+                print(f"{res} {info} {len(trace)}")
         else:
-            print("No angle found.")
+            print("No angle found")

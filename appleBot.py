@@ -1,9 +1,10 @@
-from utils import *
 from datetime import datetime
+
 from SimulationHandler import SimulationHandler
+from utils import *
 
 ENERGY_UPDATE_INTERVAL = 2
-SCAN_INTERVAL = 1
+SCAN_INTERVAL = 10
 
 
 class AppleBot:
@@ -114,6 +115,7 @@ class AppleBot:
                 x, y, radius, mass = self.connection.receive_struct("dddd")
                 self.planets.append(Planet(x, y, radius, mass, i))
             self.msg(f"planet data for {len(self.planets)} planets received")
+            tmp = self.planets[-1]
             self.update_simulation()
 
         # unknown MSG_TYPE
@@ -128,15 +130,13 @@ class AppleBot:
 
         if (datetime.now() - self.last_scan).seconds > SCAN_INTERVAL:
             self.scan_field()
-            self.last_scan = datetime.now()
 
         self.process_incoming()
 
     def scan_field(self):
         if len(self.players) <= 1:
-            self.msg("Not enough players to scan.")
             return
         if not self.simulation.initialized:
-            self.msg("Simulation not yet initialized.")
             return
-        self.simulation.scan_angle(0, 360, 0.01, 10)
+        self.simulation.scan_angle([0, 360, 10], [10, 100, 0.2])
+        self.last_scan = datetime.now()
