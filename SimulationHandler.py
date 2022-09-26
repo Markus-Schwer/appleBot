@@ -1,4 +1,5 @@
 import math
+import random
 
 import numpy as np
 from tqdm import tqdm
@@ -277,7 +278,7 @@ class SimulationHandler:
                 print(initialAngle)
 
                 # ret = optimize.least_squares(self.calc_distance, [initialAngle, 5], bounds=[[0, 0], [360, 20]], args=(player.position,))
-                ret = optimize.minimize(self.calc_distance, [initialAngle, 5], bounds=optimize.Bounds([0, 0], [360, 20]), args=(player.position,))
+                ret = optimize.minimize(self.calc_distance, [initialAngle, random.randint(1, 10)], tol=0.01, bounds=optimize.Bounds([0, 0], [360, 20]), args=(player.position,))
                 angle, power = ret.x
                 print(ret)
                 _, _, trace = self.simulate_own_shot(angle, power)
