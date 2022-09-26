@@ -4,7 +4,7 @@ from SimulationHandler import SimulationHandler
 from utils import *
 
 ENERGY_UPDATE_INTERVAL = 2
-SCAN_INTERVAL = 10
+SCAN_INTERVAL = 1
 
 
 class AppleBot:
@@ -33,10 +33,8 @@ class AppleBot:
         print(f"[{self.__class__.__name__}]: {message}")
 
     def shoot(self):
-        self.angle += 361 / 36.0
-        if self.angle > 180:
-            self.angle -= 360
-        return self.speed, self.angle
+        self.connection.send_str(f"v {self.power}")
+        self.connection.send_str(f"{(-self.angle + 90) % 360}")
 
     def report_shot(self, curve):
         self.last_shot = curve
@@ -129,14 +127,18 @@ class AppleBot:
             self.last_energy_update = datetime.now()
 
         if (datetime.now() - self.last_scan).seconds > SCAN_INTERVAL:
-            self.scan_field()
+            self.simulate()
 
+        # self.simulate()
         self.process_incoming()
 
-    def scan_field(self):
+    def simulate(self):
         if len(self.players) <= 1:
             return
         if not self.simulation.initialized:
             return
-        self.simulation.scan_angle([0, 360, 10], [10, 100, 0.2])
+
+        self.angle, self.power = self.simulation.find_solution()
+        self.shoot()
+        self.simulation.draw()
         self.last_scan = datetime.now()
