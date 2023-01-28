@@ -26,7 +26,7 @@ class SocketManager:
         while True:
             try:
                 self.socket.recv(4096)
-            except TimeoutError:
+            except Exception:
                 break
         self.socket.settimeout(timeout)
 
@@ -44,7 +44,7 @@ class SocketManager:
 
                 buf += new_buf
                 byte_count -= len(new_buf)
-            except TimeoutError:
+            except Exception:
                 buf = None
                 break
 

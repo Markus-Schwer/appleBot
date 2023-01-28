@@ -72,8 +72,14 @@ class SimulationHandler:
         self.players = players
         self.planets = planets
         self.own_id = own_id
+        print(self.players)
+        print(self.planets)
+
+        for planet in planets:
+            print(planet)
 
         for player in players:
+            print(player)
             if player.id == own_id:
                 self.position = player.position
 
@@ -277,14 +283,44 @@ class SimulationHandler:
                 self.angle = initialAngle
                 print(initialAngle)
 
-                # ret = optimize.least_squares(self.calc_distance, [initialAngle, 5], bounds=[[0, 0], [360, 20]], args=(player.position,))
-                ret = optimize.minimize(self.calc_distance, [initialAngle, random.randint(1, 10)], tol=0.01, bounds=optimize.Bounds([0, 0], [360, 20]), args=(player.position,))
-                angle, power = ret.x
-                print(ret)
-                _, _, trace = self.simulate_own_shot(angle, power)
+                minangle = 1
+                maxangle = 36000
+                minpower = 0
+                maxpower = 2000
+                power = 10
+                distance = 1
+                while True:
+                    print(f"maxangle {maxangle} minangle {minangle}")
+                    angle = (maxangle + minangle) // 2
+                    while True:
+                        power = (maxpower + minpower) // 2
+                        distance = self.calc_distance((angle / 100, power / power), player.position)
+                    if distance == 0:
+                        break
+
+                    if maxangle - minangle == 1:
+                        break
+                    
+                    # find out if too high or too low
+                    tmp_angle = angle - 1
+                    newdistance = self.calc_distance((tmp_angle / 100, power), player.position)
+                    if newdistance == 0:
+                        break
+
+                    if newdistance < distance:
+                        # we were too high
+                        maxangle = tmp_angle
+                    else:
+                        # we were too low
+                        minangle = angle
+
+                #ret = optimize.minimize(self.calc_distance, [initialAngle, random.randint(1, 10)], tol=0.05, bounds=optimize.Bounds([0, 0], [360, 20]), args=(player.position,))
+                #angle, power = ret.x
+                #print(ret)
+                _, _, trace = self.simulate_own_shot(angle / 100, power)
                 self.lastTrace = self.calc_surface_position(trace)
 
-                return angle, power
+                return angle / 100, power
 
     def calc_distance(self, x, target):
         angle, energy = x
@@ -295,4 +331,4 @@ class SimulationHandler:
         if (min_distance < self.playerSize / 0.8):
             min_distance = 0
 
-        return np.array([min_distance])
+        return min_distance
